@@ -82,7 +82,12 @@ export default function ManageDonationsPage() {
                     Pledged: {d.quantity} {d.donation_items?.unit || d.item?.unit || ''}
                   </p>
                   <p className="text-sm text-gray-500">
-                    Date: {format(new Date(d.created_at), 'MMM d, yyyy')}
+                    Pledged On: {format(new Date(d.created_at), 'MMM d, yyyy')}
+                    {d.donation_date && (
+                      <span className="ml-3 text-primary-600 font-medium">
+                        • Expected: {format(new Date(d.donation_date), 'MMM d, yyyy')}
+                      </span>
+                    )}
                   </p>
                   {d.notes && <p className="text-sm text-gray-600">Notes: {d.notes}</p>}
                 </div>

@@ -1,7 +1,7 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
-  Home, Calendar, Gift, Package, User, LogOut, Menu, X, Shield,
+  Home, Calendar, Gift, Package, User, LogOut, Menu, X, Shield, List,
 } from 'lucide-react';
 import { useState } from 'react';
 import logo from '../../assets/sofosh.png';
@@ -13,24 +13,27 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = async () => {
-    await logout();
-    navigate('/login');
+    if (confirm('Are you sure you want to log out?')) {
+      await logout();
+      navigate('/login');
+    }
   };
 
   const userLinks = [
     { to: '/dashboard', label: 'Dashboard', icon: Home },
+    { to: '/current-requirements', label: 'Current Needs', icon: List },
     { to: '/schedules', label: 'Schedules', icon: Calendar },
     { to: '/appointments', label: 'Appointments', icon: Calendar },
     { to: '/donations', label: 'Donate', icon: Gift },
-    { to: '/inventory', label: 'Inventory', icon: Package },
   ];
 
   const adminLinks = [
     { to: '/admin', label: 'Dashboard', icon: Home },
+    { to: '/admin/current-requirements', label: 'Current Needs', icon: List },
     { to: '/admin/schedules', label: 'Schedules', icon: Calendar },
     { to: '/admin/appointments', label: 'Appointments', icon: Calendar },
     { to: '/admin/donations', label: 'Donations', icon: Gift },
-    { to: '/admin/pdf-upload', label: 'Requirements', icon: Package },
+    { to: '/admin/pdf-upload', label: 'Add Requirements', icon: Package },
     { to: '/admin/users', label: 'Users', icon: User },
   ];
 

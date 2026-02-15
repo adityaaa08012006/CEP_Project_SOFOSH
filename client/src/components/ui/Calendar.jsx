@@ -22,7 +22,7 @@ export default function Calendar({ schedules = [], appointments = [], donations 
   const getEventsForDay = (day) => {
     const daySchedules = schedules.filter((s) => isSameDay(new Date(s.date), day));
     const dayAppointments = appointments.filter((a) => isSameDay(new Date(a.schedule?.date), day));
-    const dayDonations = donations.filter((d) => isSameDay(new Date(d.donated_at || d.created_at), day));
+    const dayDonations = donations.filter((d) => d.donation_date && isSameDay(new Date(d.donation_date), day));
 
     return { schedules: daySchedules, appointments: dayAppointments, donations: dayDonations };
   };

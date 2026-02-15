@@ -48,6 +48,11 @@ export default function MyDonationsPage() {
                       Quantity: {d.quantity} {d.donation_items?.unit || d.item?.unit || ''}
                     </span>
                     <span>Pledged: {format(new Date(d.created_at), 'MMM d, yyyy')}</span>
+                    {d.donation_date && (
+                      <span className="text-primary-600 font-medium">
+                        Expected: {format(new Date(d.donation_date), 'MMM d, yyyy')}
+                      </span>
+                    )}
                   </div>
                   {d.notes && (
                     <p className="text-sm text-gray-600 ml-8">Notes: {d.notes}</p>

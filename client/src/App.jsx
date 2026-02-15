@@ -11,6 +11,7 @@ import RegisterPage from './pages/auth/RegisterPage';
 
 // User pages
 import UserDashboard from './pages/user/UserDashboard';
+import UserCurrentRequirementsPage from './pages/user/CurrentRequirementsPage';
 import SchedulesPage from './pages/user/SchedulesPage';
 import AppointmentsPage from './pages/user/AppointmentsPage';
 import DonationsPage from './pages/user/DonationsPage';
@@ -19,6 +20,7 @@ import ProfilePage from './pages/user/ProfilePage';
 
 // Admin pages
 import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminCurrentRequirementsPage from './pages/admin/CurrentRequirementsPage';
 import ManageSchedulesPage from './pages/admin/ManageSchedulesPage';
 import ManageAppointmentsPage from './pages/admin/ManageAppointmentsPage';
 import ManageDonationsPage from './pages/admin/ManageDonationsPage';
@@ -56,6 +58,7 @@ export default function App() {
             <Route element={<UserRoute />}>
               <Route element={<Layout />}>
                 <Route path="/dashboard" element={<UserDashboard />} />
+                <Route path="/current-requirements" element={<UserCurrentRequirementsPage />} />
                 <Route path="/schedules" element={<SchedulesPage />} />
                 <Route path="/appointments" element={<AppointmentsPage />} />
                 <Route path="/donations" element={<DonationsPage />} />
@@ -68,6 +71,7 @@ export default function App() {
             <Route element={<AdminRoute />}>
               <Route element={<Layout />}>
                 <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/current-requirements" element={<AdminCurrentRequirementsPage />} />
                 <Route path="/admin/schedules" element={<ManageSchedulesPage />} />
                 <Route path="/admin/appointments" element={<ManageAppointmentsPage />} />
                 <Route path="/admin/donations" element={<ManageDonationsPage />} />

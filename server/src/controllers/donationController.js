@@ -31,7 +31,7 @@ export const getDonations = async (req, res, next) => {
 
 export const createDonation = async (req, res, next) => {
   try {
-    const { item_id, quantity, notes } = req.validatedBody;
+    const { item_id, quantity, donation_date, notes } = req.validatedBody;
 
     // Check item exists
     const { data: item, error: itemError } = await supabaseAdmin
@@ -54,6 +54,7 @@ export const createDonation = async (req, res, next) => {
         user_id: req.user.id,
         item_id,
         quantity,
+        donation_date,
         notes: notes || null,
         status: 'pledged',
         donated_at: new Date().toISOString(),

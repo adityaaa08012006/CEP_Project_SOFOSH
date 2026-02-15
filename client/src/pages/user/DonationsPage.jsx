@@ -13,6 +13,7 @@ export default function DonationsPage() {
   const [donateModal, setDonateModal] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState('');
+  const [donationDate, setDonationDate] = useState('');
   const queryClient = useQueryClient();
 
   useDonationRealtime();
@@ -37,6 +38,7 @@ export default function DonationsPage() {
       setDonateModal(null);
       setQuantity(1);
       setNotes('');
+      setDonationDate('');
       queryClient.invalidateQueries({ queryKey: ['donation-items'] });
       queryClient.invalidateQueries({ queryKey: ['my-donations'] });
     },
@@ -133,6 +135,7 @@ export default function DonationsPage() {
                   onClick={() => {
                     setDonateModal(item);
                     setQuantity(1);
+                    setDonationDate('');
                   }}
                   className="btn-primary w-full text-sm"
                 >
@@ -174,6 +177,20 @@ export default function DonationsPage() {
             </div>
 
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Expected Donation Date <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="date"
+                value={donationDate}
+                onChange={(e) => setDonationDate(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+                className="input-field"
+                required
+              />
+            </div>
+
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
               <textarea
                 value={notes}
@@ -186,13 +203,18 @@ export default function DonationsPage() {
 
             <div className="flex space-x-3">
               <button
-                onClick={() =>
+                onClick={() => {
+                  if (!donationDate) {
+                    toast.error('Please select a donation date');
+                    return;
+                  }
                   donateMutation.mutate({
                     item_id: donateModal.id,
                     quantity,
+                    donation_date: donationDate,
                     notes: notes || undefined,
-                  })
-                }
+                  });
+                }}
                 disabled={donateMutation.isPending}
                 className="btn-primary flex-1"
               >

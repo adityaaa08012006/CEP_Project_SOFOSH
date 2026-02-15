@@ -53,6 +53,7 @@ export const donationItemSchema = z.object({
 export const donationSchema = z.object({
   item_id: z.string().uuid('Invalid item ID'),
   quantity: z.number().min(0.01, 'Quantity must be positive'),
+  donation_date: z.string().min(1, 'Donation date is required'),
   notes: z.string().optional().default(''),
 });
 
