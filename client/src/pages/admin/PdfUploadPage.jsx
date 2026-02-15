@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { donationItemApi } from '../../api';
-import { UNITS } from '@cep/shared';
+import { UNITS, DONATION_CATEGORIES } from '@cep/shared';
 import { LoadingSpinner, EmptyState } from '../../components/ui/Common';
 import { Upload, FileText, Trash2, Check, Edit2 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -11,11 +11,6 @@ export default function PdfUploadPage() {
   const [extractedItems, setExtractedItems] = useState([]);
   const [step, setStep] = useState('upload'); // upload | review | done
   const queryClient = useQueryClient();
-
-  const { data: categoriesData } = useQuery({
-    queryKey: ['donation-categories'],
-    queryFn: () => donationItemApi.getCategories().then((r) => r.data),
-  });
 
   const extractMut = useMutation({
     mutationFn: (formData) => donationItemApi.extractFromPdf(formData),
@@ -64,9 +59,10 @@ export default function PdfUploadPage() {
   const handlePublish = () => {
     const items = extractedItems
       .filter((item) => item._include)
-      .map(({ _id, _include, confidence, ...rest }) => ({
+      .map(({ _id, _include, confidence, suggested_category, quantity, ...rest }) => ({
         ...rest,
-        quantity_needed: parseInt(rest.quantity_needed) || 1,
+        category: suggested_category || 'Other',
+        quantity: parseFloat(quantity) || 1,
       }));
 
     if (items.length === 0) {
@@ -74,15 +70,13 @@ export default function PdfUploadPage() {
       return;
     }
 
-    publishMut.mutate({ items, batch_name: file?.name || 'PDF Upload' });
+    publishMut.mutate({ items, batch_title: file?.name || 'PDF Upload' });
   };
-
-  const categories = categoriesData?.categories || [];
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">PDF Upload & Extract</h1>
+        <h1 className="text-2xl font-bold">Requirements</h1>
         <p className="text-gray-500">Upload a PDF containing needed items to automatically create donation listings</p>
       </div>
 
@@ -194,8 +188,8 @@ export default function PdfUploadPage() {
                         <input
                           type="number"
                           min="1"
-                          value={item.quantity_needed}
-                          onChange={(e) => updateItem(item._id, 'quantity_needed', e.target.value)}
+                          value={item.quantity}
+                          onChange={(e) => updateItem(item._id, 'quantity', e.target.value)}
                           className="input-field text-sm py-1 w-24"
                         />
                       </td>
@@ -210,12 +204,12 @@ export default function PdfUploadPage() {
                       </td>
                       <td className="py-2">
                         <select
-                          value={item.category || ''}
-                          onChange={(e) => updateItem(item._id, 'category', e.target.value)}
+                          value={item.suggested_category || ''}
+                          onChange={(e) => updateItem(item._id, 'suggested_category', e.target.value)}
                           className="input-field text-sm py-1"
                         >
                           <option value="">Auto-detect</option>
-                          {categories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+                          {DONATION_CATEGORIES.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
                         </select>
                       </td>
                       <td className="py-2">

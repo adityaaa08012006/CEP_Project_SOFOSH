@@ -90,7 +90,7 @@ export const extractFromPdf = async (req, res, next) => {
     const items = await parsePdfToItems(req.file.buffer);
 
     res.json({
-      extracted_items: items,
+      items: items,
       total: items.length,
       message: 'Items extracted. Review and edit before publishing.',
     });

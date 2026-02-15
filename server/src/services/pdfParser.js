@@ -1,14 +1,89 @@
 import pdfParse from 'pdf-parse';
 import { DONATION_CATEGORIES, UNITS } from '@cep/shared';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+const genAI = process.env.GEMINI_API_KEY 
+  ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+  : null;
 
 /**
- * Parse a PDF buffer and extract donation items using rule-based heuristics.
- * No AI/LLM required — works offline with unlimited usage.
+ * Parse a PDF buffer and extract donation items using Gemini AI or rule-based heuristics.
  */
 export async function parsePdfToItems(buffer) {
   const pdfData = await pdfParse(buffer);
   const text = pdfData.text;
 
+  // Try Gemini AI first if API key is available
+  if (genAI) {
+    try {
+      const aiItems = await parseWithGemini(text);
+      if (aiItems && aiItems.length > 0) {
+        return aiItems;
+      }
+    } catch (error) {
+      console.error('Gemini AI parsing failed, falling back to rule-based:', error.message);
+    }
+  }
+
+  // Fallback to rule-based parsing
+  return parseWithRules(text);
+}
+
+/**
+ * Use Gemini AI to extract donation items from PDF text
+ */
+async function parseWithGemini(text) {
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+  const prompt = `You are an AI helper for an orphanage management system. Extract donation items from the following text.
+
+Text:
+${text}
+
+For each item found, extract:
+- name: item name (e.g., "Rice", "Milk", "Soap")
+- quantity: numeric quantity (e.g., 50, 20.5)
+- unit: unit of measurement (e.g., "kg", "liters", "pieces", "packets")
+- suggested_category: best category from this list: ${DONATION_CATEGORIES.join(', ')}
+
+Return ONLY a valid JSON array of objects. Each object must have: name, quantity, unit, suggested_category.
+If no items found, return an empty array [].
+
+Example output:
+[
+  {"name": "Rice", "quantity": 50, "unit": "kg", "suggested_category": "Grains & Cereals"},
+  {"name": "Milk", "quantity": 20, "unit": "liters", "suggested_category": "Dairy Products"}
+]`;
+
+  const result = await model.generateContent(prompt);
+  const response = result.response.text();
+  
+  // Extract JSON from response (handle markdown code blocks)
+  let jsonText = response.trim();
+  if (jsonText.startsWith('```')) {
+    jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  }
+  
+  const items = JSON.parse(jsonText);
+  
+  // Validate and normalize items
+  return items
+    .filter(item => item.name && item.quantity > 0 && item.unit)
+    .map(item => ({
+      name: item.name.trim(),
+      quantity: parseFloat(item.quantity),
+      unit: normalizeUnit(item.unit),
+      suggested_category: DONATION_CATEGORIES.includes(item.suggested_category) 
+        ? item.suggested_category 
+        : 'Other',
+      confidence: 'high'
+    }));
+}
+
+/**
+ * Rule-based parsing (original logic)
+ */
+function parseWithRules(text) {
   const lines = text
     .split('\n')
     .map((line) => line.trim())

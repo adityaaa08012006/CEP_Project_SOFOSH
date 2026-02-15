@@ -73,9 +73,7 @@ export const donationItemApi = {
   create: (data) => api.post('/donation-items', data),
   update: (id, data) => api.put(`/donation-items/${id}`, data),
   delete: (id) => api.delete(`/donation-items/${id}`),
-  extractFromPdf: (file) => {
-    const formData = new FormData();
-    formData.append('pdf', file);
+  extractFromPdf: (formData) => {
     return api.post('/donation-items/extract-from-pdf', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
