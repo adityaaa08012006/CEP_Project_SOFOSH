@@ -22,7 +22,6 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import ManageSchedulesPage from './pages/admin/ManageSchedulesPage';
 import ManageAppointmentsPage from './pages/admin/ManageAppointmentsPage';
 import ManageDonationsPage from './pages/admin/ManageDonationsPage';
-import InventoryManagementPage from './pages/admin/InventoryManagementPage';
 import ManageUsersPage from './pages/admin/ManageUsersPage';
 import PdfUploadPage from './pages/admin/PdfUploadPage';
 
@@ -72,7 +71,6 @@ export default function App() {
                 <Route path="/admin/schedules" element={<ManageSchedulesPage />} />
                 <Route path="/admin/appointments" element={<ManageAppointmentsPage />} />
                 <Route path="/admin/donations" element={<ManageDonationsPage />} />
-                <Route path="/admin/inventory" element={<InventoryManagementPage />} />
                 <Route path="/admin/users" element={<ManageUsersPage />} />
                 <Route path="/admin/pdf-upload" element={<PdfUploadPage />} />
                 <Route path="/admin/profile" element={<ProfilePage />} />

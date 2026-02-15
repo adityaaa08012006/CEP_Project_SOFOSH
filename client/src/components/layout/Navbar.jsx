@@ -30,8 +30,6 @@ export default function Navbar() {
     { to: '/admin/schedules', label: 'Schedules', icon: Calendar },
     { to: '/admin/appointments', label: 'Appointments', icon: Calendar },
     { to: '/admin/donations', label: 'Donations', icon: Gift },
-    { to: '/admin/items', label: 'Items', icon: Package },
-    { to: '/admin/inventory', label: 'Inventory', icon: Package },
     { to: '/admin/users', label: 'Users', icon: User },
   ];
 
