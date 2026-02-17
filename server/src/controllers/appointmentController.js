@@ -56,68 +56,103 @@ export const getAppointmentById = async (req, res, next) => {
 
 export const bookAppointment = async (req, res, next) => {
   try {
-    const { schedule_id, num_visitors, purpose } = req.validatedBody;
+    const { schedule_id, date, start_time, end_time, num_visitors, purpose } = req.validatedBody;
 
-    // Check schedule exists and has capacity
-    const { data: schedule, error: schedError } = await supabaseAdmin
-      .from('visiting_schedules')
-      .select('*')
-      .eq('id', schedule_id)
-      .single();
+    // Support both old schedule-based and new date/time based booking
+    let appointmentData = {
+      user_id: req.user.id,
+      num_visitors,
+      purpose: purpose || null,
+      status: 'pending',
+    };
 
-    if (schedError || !schedule) {
-      return res.status(404).json({ error: 'Schedule slot not found' });
+    if (schedule_id) {
+      // Old schedule-based booking (for backward compatibility)
+      const { data: schedule, error: schedError } = await supabaseAdmin
+        .from('visiting_schedules')
+        .select('*')
+        .eq('id', schedule_id)
+        .single();
+
+      if (schedError || !schedule) {
+        return res.status(404).json({ error: 'Schedule slot not found' });
+      }
+
+      if (!schedule.is_active) {
+        return res.status(400).json({ error: 'This slot is no longer available' });
+      }
+
+      const today = new Date().toISOString().split('T')[0];
+      if (schedule.date < today) {
+        return res.status(400).json({ error: 'Cannot book a past date' });
+      }
+
+      const available = schedule.max_capacity - schedule.current_bookings;
+      if (available < num_visitors) {
+        return res.status(409).json({ error: `Only ${available} spots available in this slot` });
+      }
+
+      // Check if user already booked this slot
+      const { data: existing } = await supabaseAdmin
+        .from('appointments')
+        .select('id')
+        .eq('user_id', req.user.id)
+        .eq('schedule_id', schedule_id)
+        .neq('status', 'cancelled')
+        .single();
+
+      if (existing) {
+        return res.status(409).json({ error: 'You already have a booking for this slot' });
+      }
+
+      appointmentData.schedule_id = schedule_id;
+
+      // Create appointment
+      const { data: appointment, error: apptError } = await supabaseAdmin
+        .from('appointments')
+        .insert(appointmentData)
+        .select()
+        .single();
+
+      if (apptError) return res.status(400).json({ error: apptError.message });
+
+      // Increment current_bookings
+      await supabaseAdmin
+        .from('visiting_schedules')
+        .update({ current_bookings: schedule.current_bookings + num_visitors })
+        .eq('id', schedule_id);
+
+      res.status(201).json({ appointment });
+    } else {
+      // New date/time based booking
+      if (!date || !start_time || !end_time) {
+        return res.status(400).json({ error: 'Date, start time, and end time are required' });
+      }
+
+      const today = new Date().toISOString().split('T')[0];
+      if (date < today) {
+        return res.status(400).json({ error: 'Cannot book a past date' });
+      }
+
+      if (start_time >= end_time) {
+        return res.status(400).json({ error: 'End time must be after start time' });
+      }
+
+      appointmentData.date = date;
+      appointmentData.start_time = start_time;
+      appointmentData.end_time = end_time;
+
+      // Create appointment
+      const { data: appointment, error: apptError } = await supabaseAdmin
+        .from('appointments')
+        .insert(appointmentData)
+        .select()
+        .single();
+
+      if (apptError) return res.status(400).json({ error: apptError.message });
+
+      res.status(201).json({ appointment });
     }
-
-    if (!schedule.is_active) {
-      return res.status(400).json({ error: 'This slot is no longer available' });
-    }
-
-    const today = new Date().toISOString().split('T')[0];
-    if (schedule.date < today) {
-      return res.status(400).json({ error: 'Cannot book a past date' });
-    }
-
-    const available = schedule.max_capacity - schedule.current_bookings;
-    if (available < num_visitors) {
-      return res.status(409).json({ error: `Only ${available} spots available in this slot` });
-    }
-
-    // Check if user already booked this slot
-    const { data: existing } = await supabaseAdmin
-      .from('appointments')
-      .select('id')
-      .eq('user_id', req.user.id)
-      .eq('schedule_id', schedule_id)
-      .neq('status', 'cancelled')
-      .single();
-
-    if (existing) {
-      return res.status(409).json({ error: 'You already have a booking for this slot' });
-    }
-
-    // Create appointment
-    const { data: appointment, error: apptError } = await supabaseAdmin
-      .from('appointments')
-      .insert({
-        user_id: req.user.id,
-        schedule_id,
-        num_visitors,
-        purpose: purpose || null,
-        status: 'pending',
-      })
-      .select()
-      .single();
-
-    if (apptError) return res.status(400).json({ error: apptError.message });
-
-    // Increment current_bookings
-    await supabaseAdmin
-      .from('visiting_schedules')
-      .update({ current_bookings: schedule.current_bookings + num_visitors })
-      .eq('id', schedule_id);
-
-    res.status(201).json({ appointment });
   } catch (err) {
     next(err);
   }
@@ -153,8 +188,8 @@ export const updateAppointmentStatus = async (req, res, next) => {
 
     if (error) return res.status(400).json({ error: error.message });
 
-    // If rejected, free up the slot capacity
-    if (status === 'rejected' && appointment.status === 'pending') {
+    // If rejected, free up the slot capacity (only for schedule-based appointments)
+    if (status === 'rejected' && appointment.status === 'pending' && appointment.schedule_id && appointment.schedule) {
       await supabaseAdmin
         .from('visiting_schedules')
         .update({
@@ -181,7 +216,8 @@ export const cancelAppointment = async (req, res, next) => {
       return res.status(404).json({ error: 'Appointment not found' });
     }
 
-    if (appointment.user_id !== req.user.id) {
+    // Only allow users to cancel their own appointments, but admins can cancel any
+    if (req.user.role !== ROLES.ADMIN && appointment.user_id !== req.user.id) {
       return res.status(403).json({ error: 'You can only cancel your own appointments' });
     }
 
@@ -198,8 +234,8 @@ export const cancelAppointment = async (req, res, next) => {
 
     if (error) return res.status(400).json({ error: error.message });
 
-    // Free up capacity
-    if (['pending', 'approved'].includes(appointment.status)) {
+    // Free up capacity (only for schedule-based appointments)
+    if (appointment.schedule_id && appointment.schedule && ['pending', 'approved'].includes(appointment.status)) {
       await supabaseAdmin
         .from('visiting_schedules')
         .update({

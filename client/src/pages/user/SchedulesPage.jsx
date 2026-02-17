@@ -21,6 +21,12 @@ export default function SchedulesPage() {
     queryFn: () => scheduleApi.getAll({ active_only: 'true' }).then((r) => r.data),
   });
 
+  // Fetch confirmed appointments to display on calendar
+  const { data: appointmentsData } = useQuery({
+    queryKey: ['confirmed-appointments-calendar'],
+    queryFn: () => appointmentApi.getAll({ status: 'confirmed' }).then((r) => r.data),
+  });
+
   const handleBook = async () => {
     if (!selectedSchedule) return;
     setBooking(true);
@@ -49,11 +55,23 @@ export default function SchedulesPage() {
     (s) => !isBefore(new Date(s.date), startOfDay(new Date()))
   );
 
+  const confirmedAppointments = (appointmentsData?.appointments || []).filter(
+    (apt) => apt.date && !isBefore(new Date(apt.date), startOfDay(new Date()))
+  );
+
   // Group by date
   const grouped = {};
+  
+  // Add schedules
   schedules.forEach((s) => {
     if (!grouped[s.date]) grouped[s.date] = [];
-    grouped[s.date].push(s);
+    grouped[s.date].push({ type: 'schedule', data: s });
+  });
+
+  // Add confirmed appointments
+  confirmedAppointments.forEach((apt) => {
+    if (!grouped[apt.date]) grouped[apt.date] = [];
+    grouped[apt.date].push({ type: 'appointment', data: apt });
   });
 
   return (
@@ -71,53 +89,86 @@ export default function SchedulesPage() {
         />
       ) : (
         <div className="space-y-6">
-          {Object.entries(grouped).sort().map(([date, slots]) => (
+          {Object.entries(grouped).sort().map(([date, items]) => (
             <div key={date}>
               <h2 className="text-lg font-semibold mb-3 flex items-center space-x-2">
                 <Calendar className="w-5 h-5 text-primary-600" />
                 <span>{format(new Date(date), 'EEEE, MMMM d, yyyy')}</span>
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {slots.map((slot) => {
-                  const available = slot.max_capacity - slot.current_bookings;
-                  const isFull = available <= 0;
+                {items.map((item, idx) => {
+                  if (item.type === 'schedule') {
+                    const slot = item.data;
+                    const available = slot.max_capacity - slot.current_bookings;
+                    const isFull = available <= 0;
 
-                  return (
-                    <div
-                      key={slot.id}
-                      className={`card cursor-pointer transition-all hover:shadow-md ${
-                        isFull ? 'opacity-60' : 'hover:border-primary-300'
-                      }`}
-                      onClick={() => {
-                        if (!isFull) {
-                          setSelectedSchedule(slot);
-                          setBookingModal(true);
-                        }
-                      }}
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center space-x-2 text-primary-700">
-                          <Clock className="w-4 h-4" />
-                          <span className="font-medium">{slot.start_time} - {slot.end_time}</span>
+                    return (
+                      <div
+                        key={`schedule-${slot.id}`}
+                        className={`card cursor-pointer transition-all hover:shadow-md ${
+                          isFull ? 'opacity-60' : 'hover:border-primary-300'
+                        }`}
+                        onClick={() => {
+                          if (!isFull) {
+                            setSelectedSchedule(slot);
+                            setBookingModal(true);
+                          }
+                        }}
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center space-x-2 text-primary-700">
+                            <Clock className="w-4 h-4" />
+                            <span className="font-medium">{slot.start_time} - {slot.end_time}</span>
+                          </div>
+                          {isFull ? (
+                            <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium">Full</span>
+                          ) : (
+                            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
+                              {available} spots left
+                            </span>
+                          )}
                         </div>
-                        {isFull ? (
-                          <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium">Full</span>
-                        ) : (
-                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
-                            {available} spots left
-                          </span>
+                        <div className="flex items-center space-x-2 text-sm text-gray-500">
+                          <Users className="w-4 h-4" />
+                          <span>{slot.current_bookings} / {slot.max_capacity} booked</span>
+                        </div>
+                        {!isFull && (
+                          <button className="btn-primary w-full mt-4 text-sm">
+                            Book This Slot
+                          </button>
                         )}
                       </div>
-                      <div className="flex items-center space-x-2 text-sm text-gray-500">
-                        <Users className="w-4 h-4" />
-                        <span>{slot.current_bookings} / {slot.max_capacity} booked</span>
+                    );
+                  } else {
+                    // Display confirmed appointment
+                    const apt = item.data;
+                    return (
+                      <div
+                        key={`appointment-${apt.id}`}
+                        className="card bg-blue-50 border-blue-200 !p-4"
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center space-x-2 text-blue-700">
+                            <Clock className="w-4 h-4" />
+                            <span className="font-medium">{apt.start_time} - {apt.end_time}</span>
+                          </div>
+                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">
+                            Confirmed
+                          </span>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex items-center space-x-2 text-sm text-blue-600">
+                            <Users className="w-4 h-4" />
+                            <span>{apt.num_visitors} visitor{apt.num_visitors > 1 ? 's' : ''}</span>
+                          </div>
+                          {apt.purpose && (
+                            <p className="text-sm text-gray-600 line-clamp-2">{apt.purpose}</p>
+                          )}
+                        </div>
                       </div>
-                      {!isFull && (
-                        <button className="btn-primary w-full mt-4 text-sm">
-                          Book This Slot
-                        </button>
-                      )}
-                    </div>
+                    );
+                  }
+                })}
                   );
                 })}
               </div>

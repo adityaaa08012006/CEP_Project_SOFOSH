@@ -4,6 +4,7 @@ import {
   Home, Calendar, Gift, Package, User, LogOut, Menu, X, Shield, List,
 } from 'lucide-react';
 import { useState } from 'react';
+import toast from 'react-hot-toast';
 import logo from '../../assets/sofosh.png';
 
 export default function Navbar() {
@@ -13,9 +14,12 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = async () => {
-    if (confirm('Are you sure you want to log out?')) {
+    try {
       await logout();
+      toast.success('Logged out successfully');
       navigate('/login');
+    } catch (err) {
+      toast.error('Failed to log out');
     }
   };
 

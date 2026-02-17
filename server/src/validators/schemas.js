@@ -27,10 +27,16 @@ export const scheduleSchema = z.object({
 });
 
 export const appointmentSchema = z.object({
-  schedule_id: z.string().uuid('Invalid schedule ID'),
+  schedule_id: z.string().uuid('Invalid schedule ID').optional(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD').optional(),
+  start_time: z.string().regex(/^\d{2}:\d{2}$/, 'Time must be HH:MM').optional(),
+  end_time: z.string().regex(/^\d{2}:\d{2}$/, 'Time must be HH:MM').optional(),
   num_visitors: z.number().int().min(1, 'At least 1 visitor required'),
   purpose: z.string().optional(),
-});
+}).refine(
+  (data) => data.schedule_id || (data.date && data.start_time && data.end_time),
+  'Either schedule_id or (date, start_time, end_time) must be provided'
+);
 
 export const appointmentStatusSchema = z.object({
   status: z.enum(['approved', 'rejected']),
